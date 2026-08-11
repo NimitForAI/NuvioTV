@@ -43,6 +43,7 @@ import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import com.nuvio.tv.core.network.IPv4FirstDns
+import com.nuvio.tv.core.network.nuvioNetworkDefaults
 import com.nuvio.tv.core.diagnostics.SentryNetworkBreadcrumbInterceptor
 import java.io.File
 import java.security.SecureRandom
@@ -110,7 +111,7 @@ object NetworkModule {
             init(null, arrayOf<TrustManager>(trustAllManager), SecureRandom())
         }
         return OkHttpClient.Builder()
-            .dns(IPv4FirstDns())
+            .nuvioNetworkDefaults()
             .sslSocketFactory(sslContext.socketFactory, trustAllManager)
             .hostnameVerifier { _, _ -> true }
             .cache(Cache(File(context.cacheDir, "http_cache"), 50L * 1024 * 1024)) // 50 MB disk cache
@@ -148,7 +149,7 @@ object NetworkModule {
     @Named("directDebrid")
     fun provideDirectDebridOkHttpClient(): OkHttpClient =
         OkHttpClient.Builder()
-            .dns(IPv4FirstDns())
+            .nuvioNetworkDefaults()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .addInterceptor { chain ->
@@ -166,7 +167,7 @@ object NetworkModule {
     @Singleton
     @Named("simkl")
     fun provideSimklOkHttpClient(): OkHttpClient = OkHttpClient.Builder()
-        .dns(IPv4FirstDns())
+        .nuvioNetworkDefaults()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
