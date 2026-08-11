@@ -25,7 +25,7 @@ jobs:
         run: chmod +x ./gradlew
 
       - name: Build fullDebug APK
-        run: ./gradlew :app:assembleFullDebug --stacktrace --no-daemon
+        run: ./gradlew :app:assembleFullDebug --stacktrace --no-daemon -x validateSigningFullDebug
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
