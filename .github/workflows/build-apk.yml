@@ -21,11 +21,27 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Generate stand-in keystore for signing
+        run: |
+          keytool -genkeypair -v \
+            -keystore "$GITHUB_WORKSPACE/nuviotv.jks" \
+            -storetype JKS \
+            -storepass 815787 \
+            -keypass 815787 \
+            -alias nuviotv \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -dname "CN=NuvioTV, OU=Dev, O=Dev, L=NA, ST=NA, C=NA"
+
       - name: Grant execute permission for gradlew
         run: chmod +x ./gradlew
 
       - name: Build fullDebug APK
-        run: ./gradlew :app:assembleFullDebug --stacktrace --no-daemon -x validateSigningFullDebug
+        run: ./gradlew :app:assembleFullDebug --stacktrace --no-daemon
+        env:
+          NUVIO_RELEASE_STORE_FILE: ${{ github.workspace }}/nuviotv.jks
+          NUVIO_RELEASE_KEY_ALIAS: nuviotv
+          NUVIO_RELEASE_KEY_PASSWORD: '815787'
+          NUVIO_RELEASE_STORE_PASSWORD: '815787'
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
