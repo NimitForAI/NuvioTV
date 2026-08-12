@@ -243,6 +243,9 @@ class MainActivity : ComponentActivity() {
     lateinit var authManager: AuthManager
 
     @Inject
+    lateinit var stremioAuthRepository: com.nuvio.tv.data.repository.StremioAuthRepository
+
+    @Inject
     lateinit var deviceSessionRegistration: DeviceSessionRegistration
 
     @Inject
@@ -328,6 +331,9 @@ class MainActivity : ComponentActivity() {
             val hasSeenAuthQrOnFirstLaunch by hasSeenAuthQrFlow.collectAsState(initial = null)
             val authState by authManager.authState.collectAsState()
             val context = LocalContext.current
+            val stremioLoggedIn by stremioAuthRepository.isLoggedIn.collectAsState(initial = null)
+            var stremioLoginHandledThisSession by remember { mutableStateOf(false) }
+
 
             LaunchedEffect(authSessionNoticeDataStore, context) {
                 authSessionNoticeDataStore.pendingNotice.collect { notice ->
@@ -515,51 +521,29 @@ class MainActivity : ComponentActivity() {
                         return@Surface
                     }
 
-                    if (
-                        hasSeenAuthQrOnFirstLaunch == false &&
-                        authState !is AuthState.FullAccount &&
-                        !onboardingCompletedThisSession
-                    ) {
-                        AuthQrSignInScreen(
-                            onBackPress = { finish() },
-                            onContinue = {
-                                lifecycleScope.launch {
-                                    val shouldRunRemoteOnboardingSync =
-                                        authManager.authState.value is AuthState.FullAccount
+if (stremioLoggedIn == null) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(NuvioTheme.colors.Background)
+    )
+    return@Surface
+}
 
-                                    if (shouldRunRemoteOnboardingSync) {
-                                        if (onboardingProfileSyncInProgress) return@launch
-                                        onboardingProfileSyncInProgress = true
-                                        val maxAttempts = 3
-                                        var synced = false
-                                        for (attempt in 0 until maxAttempts) {
-                                            val result = profileSyncService.pullFromRemote()
-                                            if (result.isSuccess) {
-                                                synced = true
-                                                break
-                                            }
-                                            if (attempt < maxAttempts - 1) {
-                                                delay(1_000)
-                                            }
-                                        }
-                                        if (!synced) {
-                                            android.util.Log.w(
-                                                "MainActivity",
-                                                "Onboarding profile sync failed after retries; continuing"
-                                            )
-                                        }
-                                    }
-                                    appOnboardingDataStore.setHasSeenAuthQrOnFirstLaunch(true)
-                                    onboardingCompletedThisSession = true
-                                    onboardingProfileSyncInProgress = false
-                                }
-                                if (authManager.authState.value is AuthState.FullAccount) {
-                                    startupSyncService.requestSyncNow()
-                                }
-                            }
-                        )
-                        return@Surface
-                    }
+if (stremioLoggedIn == false && !stremioLoginHandledThisSession) {
+    fun completeStremioGate() {
+        stremioLoginHandledThisSession = true
+        lifecycleScope.launch {
+            appOnboardingDataStore.setHasSeenAuthQrOnFirstLaunch(true)
+        }
+    }
+    com.nuvio.tv.ui.screens.stremioauth.StremioLoginScreen(
+        onLoggedIn = { completeStremioGate() },
+        onSkip = { completeStremioGate() }   // delete this line to force login
+    )
+    return@Surface
+}
+
 
                     val shouldShowProfileSelection =
                         !hasSelectedProfileThisSession && (profiles.size > 1 || activeProfileHasPin)
